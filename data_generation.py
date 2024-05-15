@@ -41,5 +41,23 @@ for t in themes:
 
 print(stories)
 
+#split the stories
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+    chunk_size=300, 
+    chunk_overlap=50
+)
+splits = text_splitter.split_documents(stories)
+
+
+#embed stories into chroma db
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+vectorstore = Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
+retriever = vectorstore.as_retriever() #document retriever
+
+
+
+
 
 
