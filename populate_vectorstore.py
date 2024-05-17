@@ -1,5 +1,7 @@
 # Useful Sources: https://www.youtube.com/watch?v=2TJxpyO3ei4
 
+from get_embedding_function import get_embedding_function
+
 DOCUMENT_PATH = "data"
 CHROMA_PATH = "chroma"
 
@@ -24,16 +26,6 @@ def split_documents(documents: list[Document]):
         is_separator_regex = False
     )
     return text_splitter.split_documents(documents)
-
-## RETURN THE EMBEDDING MODEL ##
-
-from langchain_community.embeddings.ollama import OllamaEmbeddings
-
-def get_embedding_function():
-    embeddings = OllamaEmbeddings(
-       model="nomic-embed-text"
-    )
-    return embeddings
 
 from langchain.vectorstores.chroma import Chroma
 
@@ -96,7 +88,7 @@ def calculate_chunk_ids(chunks):
     return chunks
 
 
-
-documents = load_documents()
-chunks = split_documents(documents)
-add_to_chroma(chunks)
+if __name__ == "__main__":
+    documents = load_documents()
+    chunks = split_documents(documents)
+    add_to_chroma(chunks)
