@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import streamlit_authenticator as stauth
 
@@ -8,15 +9,18 @@ def rag(prompt):
     response = query_rag(prompt)
     return response
 
+# Function to list uploaded files
+def list_uploaded_files():
+    return [f for f in os.listdir("data") if f.endswith(".pdf")]
+
 ## STREAMLIT AND UI ##
 
 st.header("Retreival Augmented Generation (RAG) Demo", divider="orange")
 
 # Create a form
-with st.form(key='my_form'):
+with st.form(key='input_form'):
     # Create a text input widget within the form
     user_input = st.text_input("Enter some text:")
-
     # Create a submit button within the form
     submit_button = st.form_submit_button(label='Submit')
 
@@ -37,4 +41,24 @@ add_selectbox = st.sidebar.selectbox(
 )
 
 # Add a slider to the sidebar:
-add_file_uploader = st.sidebar.file_uploader("Upload Files To Vectorstore", accept_multiple_files=True)
+# Create a form
+with st.sidebar.form(key='file_form'):
+    # Create a text input widget within the form
+    uadd_file_uploader = st.file_uploader("Upload Files To Vectorstore", accept_multiple_files=True, label_visibility="collapsed")
+
+    # Create a submit button within the form
+    submit_button = st.form_submit_button(label='Upload')
+
+
+st.sidebar.subheader("Uploaded Files")
+uploaded_files = list_uploaded_files()
+if uploaded_files:
+    for file in uploaded_files:
+        file_path = os.path.join("data/", file)
+        # with open(file_path, "rb") as f:
+        #     reader = PdfReader(f)
+        #     num_pages = len(reader.pages)
+        # st.markdown(f"- [{file}]({file_path}) ({num_pages} pages)")
+        st.sidebar.markdown(f"- [{file}]({file_path})")
+else:
+    st.sidebar.write("No files uploaded yet.")
