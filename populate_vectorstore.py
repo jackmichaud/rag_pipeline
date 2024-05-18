@@ -1,7 +1,10 @@
+import os
+import shutil
+
 from get_embedding_function import get_embedding_function
 
 DOCUMENT_PATH = "data"
-CHROMA_PATH = "chroma"
+CHROMA_PATH = "./chroma"
 
 ## LOADING THE DOCUMENTS FROM A DIRECTORY ##
 
@@ -82,11 +85,18 @@ def calculate_chunk_ids(chunks):
 
         # Add it to the page meta-data.
         chunk.metadata["id"] = chunk_id
-
     return chunks
 
 
+def clear_database():
+    if os.path.exists(CHROMA_PATH):
+        print("CLEARING VECTORSTORE...")
+        shutil.rmtree(CHROMA_PATH)
+
+
 if __name__ == "__main__":
+    # clear_database()
     documents = load_documents()
+    print(documents)
     chunks = split_documents(documents)
     add_to_chroma(chunks)
