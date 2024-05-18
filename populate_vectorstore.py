@@ -1,5 +1,3 @@
-# Useful Sources: https://www.youtube.com/watch?v=2TJxpyO3ei4
-
 from get_embedding_function import get_embedding_function
 
 DOCUMENT_PATH = "data"
