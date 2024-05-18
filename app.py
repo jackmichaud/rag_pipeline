@@ -4,6 +4,7 @@ import streamlit_authenticator as stauth
 
 import populate_vectorstore
 from rag_pipeline import query_rag
+from populate_vectorstore import update_vectorstore
 
 def rag(prompt):
     response = query_rag(prompt)
@@ -44,11 +45,22 @@ add_selectbox = st.sidebar.selectbox(
 # Create a form
 with st.sidebar.form(key='file_form'):
     # Create a text input widget within the form
-    uadd_file_uploader = st.file_uploader("Upload Files To Vectorstore", accept_multiple_files=True, label_visibility="collapsed")
+    uadd_file_uploader = st.file_uploader("Upload File To Vectorstore", accept_multiple_files=True, label_visibility="collapsed")
 
     # Create a submit button within the form
-    submit_button = st.form_submit_button(label='Upload')
+    upload_button = st.form_submit_button(label='Upload')
 
+if upload_button:
+    if uadd_file_uploader is not None:
+        # Save the uploaded file to the specified directory
+        file_path = os.path.join("data", uadd_file_uploader[0].name)
+        
+        # Write the uploaded file to the file path
+        with open(file_path, "wb") as f:
+            f.write(uadd_file_uploader[0].getbuffer())
+        
+        st.success(f"File '{uadd_file_uploader[0].name}' has been uploaded successfully!")
+    update_vectorstore()
 
 st.sidebar.subheader("Uploaded Files")
 uploaded_files = list_uploaded_files()

@@ -93,10 +93,11 @@ def clear_database():
         print("CLEARING VECTORSTORE...")
         shutil.rmtree(CHROMA_PATH)
 
+def update_vectorstore():
+    documents = load_documents()
+    chunks = split_documents(documents)
+    add_to_chroma(chunks)
 
 if __name__ == "__main__":
     # clear_database()
-    documents = load_documents()
-    print(documents)
-    chunks = split_documents(documents)
-    add_to_chroma(chunks)
+    update_vectorstore()
