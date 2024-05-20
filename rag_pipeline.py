@@ -26,6 +26,10 @@ database. By generating multiple perspectives on the user question, your goal is
 the user overcome some of the limitations of the distance-based similarity search. 
 Provide these alternative questions separated by newlines. Original question: {question}"""
 
+# Prepare the DB.
+embedding_function = get_embedding_function()
+db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+
 def main():
     # Create CLI.
     parser = argparse.ArgumentParser()
@@ -36,24 +40,19 @@ def main():
 
 
 def query_rag(query_text: str):
-    # Prepare the DB.
-    embedding_function = get_embedding_function()
-    db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
-
-    # Search the DB.
-    results = db.similarity_search_with_score(query_text, k=5)
-
-    context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+    # Generate documents using multi-query
+    context_text = generate_multi_query(query_text)
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
-    # print(prompt)
 
+    # Invoke the final llm call
     model = Ollama(model="llama2")
     response_text = model.invoke(prompt)
 
-    sources = [doc.metadata.get("id", None) for doc, _score in results]
+    # Format the repsonse
+    sources = [doc.metadata.get("id", None) for doc in context_text]
     formatted_response = f"Response: {response_text}\n\nSources: {sources}"
-    print(formatted_response)
+    #print(formatted_response)
     return formatted_response
 
 # Get unique union of documents
@@ -61,12 +60,18 @@ def get_unique_union(documents: list[list]):
     """ Unique union of retrieved docs """
     # Flatten list of lists, and convert each Document to string
     flattened_docs = [dumps(doc) for sublist in documents for doc in sublist]
+    
     # Get unique documents
     unique_docs = list(set(flattened_docs))
-    # Return
-    return [loads(doc) for doc in unique_docs]
 
-def generate_multi_query():
+    # Remove float elements that end up in list. TODO: Find out why there are floats and prevent them
+    raw_union = [loads(doc) for doc in unique_docs]
+    no_floats = [x for x in raw_union if not isinstance(x, float)]
+
+    # Return
+    return no_floats
+
+def generate_multi_query(query_text: str):
     # Generate a list of rephrased questions
     generate_queries = (
         ChatPromptTemplate.from_template(MULTI_QUERY_TEMPLATE) 
@@ -74,7 +79,18 @@ def generate_multi_query():
         | StrOutputParser() 
         | (lambda x: x.split("\n"))
     )
-    return generate_queries
+
+    # Retrieve and return documents from multi-query
+    retrieval_chain = generate_queries | retrieve_documents | get_unique_union
+    docs = retrieval_chain.invoke({"question":query_text})
+    len(docs)
+    return docs
+
+def retrieve_documents(query_text: str):
+    # Search the DB for similar text.
+    results = db.similarity_search_with_score(query_text, k=5)
+    return results
+
 
 if __name__ == "__main__":
     main()
