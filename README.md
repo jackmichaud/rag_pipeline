@@ -2,9 +2,9 @@
 
 
 To launch the streamlit app, run the following command:
-'''
+```
 streamlit run app.py
-'''
+```
 
 
 Useful Sources: 
