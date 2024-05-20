@@ -71,6 +71,6 @@ if uploaded_files:
         #     reader = PdfReader(f)
         #     num_pages = len(reader.pages)
         # st.markdown(f"- [{file}]({file_path}) ({num_pages} pages)")
-        st.sidebar.markdown(f"- [{file}]({file_path})")
+        st.sidebar.markdown(f"- [{file}]({file_path})", unsafe_allow_html=True)
 else:
     st.sidebar.write("No files uploaded yet.")

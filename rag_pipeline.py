@@ -2,22 +2,29 @@ import argparse
 from langchain.vectorstores.chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
+from langchain_core.output_parsers import StrOutputParser
+from langchain.load import dumps, loads
 
 from get_embedding_function import get_embedding_function
 
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
-Answer the following question based on only this context. If there is not enough context to answer the question or the context is irrelevant,
+Answer the following question based on only this context. If there is not enough context to answer the question or is irrelevant,
 then say that you do not know the answer:
 
 {context}
 
 ---
 
-Answer the question based on the above context: {question}
+Answer this question based on the above context: {question}
 """
 
+MULTI_QUERY_TEMPLATE = """You are an AI language model assistant. Your task is to generate five 
+different versions of the given user question to retrieve relevant documents from a vector 
+database. By generating multiple perspectives on the user question, your goal is to help
+the user overcome some of the limitations of the distance-based similarity search. 
+Provide these alternative questions separated by newlines. Original question: {question}"""
 
 def main():
     # Create CLI.
@@ -49,6 +56,25 @@ def query_rag(query_text: str):
     print(formatted_response)
     return formatted_response
 
+# Get unique union of documents
+def get_unique_union(documents: list[list]):
+    """ Unique union of retrieved docs """
+    # Flatten list of lists, and convert each Document to string
+    flattened_docs = [dumps(doc) for sublist in documents for doc in sublist]
+    # Get unique documents
+    unique_docs = list(set(flattened_docs))
+    # Return
+    return [loads(doc) for doc in unique_docs]
+
+def generate_multi_query():
+    # Generate a list of rephrased questions
+    generate_queries = (
+        ChatPromptTemplate.from_template(MULTI_QUERY_TEMPLATE) 
+        | Ollama(model="llama2")
+        | StrOutputParser() 
+        | (lambda x: x.split("\n"))
+    )
+    return generate_queries
 
 if __name__ == "__main__":
     main()
