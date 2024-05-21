@@ -11,7 +11,7 @@ CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
 Answer the following question based on only this context. If there is not enough context to answer the question or is irrelevant,
-then say that you do not know the answer:
+then say that you do not know the answer. Try to be concice:
 
 {context}
 
@@ -24,7 +24,8 @@ MULTI_QUERY_TEMPLATE = """You are an AI language model assistant. Your task is t
 different versions of the given user question to retrieve relevant documents from a vector 
 database. By generating multiple perspectives on the user question, your goal is to help
 the user overcome some of the limitations of the distance-based similarity search. 
-Provide these alternative questions separated by newlines. Original question: {question}"""
+Provide these alternative questions separated by newlines. Do not respond with anything except for
+this list of rephrased questions. Original question: {question}"""
 
 # Prepare the DB.
 embedding_function = get_embedding_function()
@@ -49,8 +50,10 @@ def query_rag(query_text: str):
     model = Ollama(model="llama2")
     response_text = model.invoke(prompt)
 
+    print("CONTEXT TEXT", context_text)
+
     # Format the repsonse
-    sources = [doc.metadata.get("id", None) for doc in context_text]
+    sources = [doc.metadata.get("id", None)[5:] for doc in context_text]
     formatted_response = f"Response: {response_text}\n\nSources: {sources}"
     #print(formatted_response)
     return formatted_response
@@ -60,16 +63,10 @@ def get_unique_union(documents: list[list]):
     """ Unique union of retrieved docs """
     # Flatten list of lists, and convert each Document to string
     flattened_docs = [dumps(doc) for sublist in documents for doc in sublist]
-    
     # Get unique documents
     unique_docs = list(set(flattened_docs))
-
-    # Remove float elements that end up in list. TODO: Find out why there are floats and prevent them
-    raw_union = [loads(doc) for doc in unique_docs]
-    no_floats = [x for x in raw_union if not isinstance(x, float)]
-
     # Return
-    return no_floats
+    return [loads(doc) for doc in unique_docs]
 
 def generate_multi_query(query_text: str):
     # Generate a list of rephrased questions
@@ -86,11 +83,12 @@ def generate_multi_query(query_text: str):
     len(docs)
     return docs
 
-def retrieve_documents(query_text: str):
+def retrieve_documents(query_list: list[str]):
     # Search the DB for similar text.
-    results = db.similarity_search_with_score(query_text, k=5)
+    results = []
+    for query in query_list:
+        results.append(db.similarity_search(query, k=4))
     return results
-
 
 if __name__ == "__main__":
     main()
