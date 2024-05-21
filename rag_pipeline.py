@@ -10,8 +10,8 @@ from get_embedding_function import get_embedding_function
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
-Answer the following question based on only this context. If there is not enough context to answer the question or is irrelevant,
-then say that you do not know the answer. Try to be concice:
+Answer the following question based on this context. If the context does not answer the question, say so. Try to be concice. 
+If you quote something from this context, copy it exactly without modifying or changing the words:
 
 {context}
 
@@ -20,12 +20,10 @@ then say that you do not know the answer. Try to be concice:
 Answer this question based on the above context: {question}
 """
 
-MULTI_QUERY_TEMPLATE = """You are an AI language model assistant. Your task is to generate five 
-different versions of the given user question to retrieve relevant documents from a vector 
-database. By generating multiple perspectives on the user question, your goal is to help
-the user overcome some of the limitations of the distance-based similarity search. 
-Provide these alternative questions separated by newlines. Do not respond with anything except for
-this list of rephrased questions. Original question: {question}"""
+MULTI_QUERY_TEMPLATE = """Genereate a list of a few different ways this question can be rephrased. If there are few/no ways
+to rephrase the question without changing its meaning, that is ok. Do not deviate far from the original question. Separate 
+each rephrased question by newlines. Do not respond with anything else except for the listof rephrased questions. 
+Include the original question at the top of the list. Original question: {question}"""
 
 # Prepare the DB.
 embedding_function = get_embedding_function()
@@ -80,7 +78,6 @@ def generate_multi_query(query_text: str):
     # Retrieve and return documents from multi-query
     retrieval_chain = generate_queries | retrieve_documents | get_unique_union
     docs = retrieval_chain.invoke({"question":query_text})
-    len(docs)
     return docs
 
 def retrieve_documents(query_list: list[str]):
