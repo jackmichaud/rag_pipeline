@@ -30,15 +30,6 @@ Include the original question at the top of the list. Original question: {questi
 embedding_function = get_embedding_function()
 db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function, collection_metadata={"hnsw:space": "cosine"})
 
-def main():
-    # Create CLI.
-    parser = argparse.ArgumentParser()
-    parser.add_argument("query_text", type=str, help="The query text.")
-    args = parser.parse_args()
-    query_text = args.query_text
-    query_rag(query_text)
-
-
 def query_rag(query_text: str):
     # Generate documents using multi-query
     context_text = generate_multi_query(query_text)
@@ -118,6 +109,3 @@ def retrieve_documents(query_list: list[str]):
     for query in query_list:
         results.append(db.similarity_search(query, k=6))
     return results
-
-if __name__ == "__main__":
-    main()
