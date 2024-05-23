@@ -67,10 +67,6 @@ uploaded_files = list_uploaded_files()
 if uploaded_files:
     for file in uploaded_files:
         file_path = os.path.join("data/", file)
-        # with open(file_path, "rb") as f:
-        #     reader = PdfReader(f)
-        #     num_pages = len(reader.pages)
-        # st.markdown(f"- [{file}]({file_path}) ({num_pages} pages)")
         st.sidebar.markdown(f"-[{file}]({file_path})", unsafe_allow_html=True)
 else:
     st.sidebar.write("No files uploaded yet.")
