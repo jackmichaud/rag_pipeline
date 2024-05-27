@@ -4,6 +4,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
 from langchain_core.output_parsers import StrOutputParser
 from langchain.load import dumps, loads
+from operator import itemgetter
 
 from get_embedding_function import get_embedding_function
 
@@ -25,6 +26,26 @@ MULTI_QUERY_TEMPLATE = """Genereate a list of a few different ways this question
 to rephrase the question without changing its meaning, that is ok. Do not deviate far from the original question. Separate 
 each rephrased question by newlines. Do not respond with anything else except for the listof rephrased questions. 
 Include the original question at the top of the list. Original question: {question}"""
+
+QUERY_DECOMPOSITION_TEMPLATE = """You are a helpful assistant that generates multiple sub-questions related to an input question. \n
+The goal is to break down the input into a set of sub-problems / sub-questions that can be answered in isolation. \n
+Generate multiple search queries related to: {question} \n
+Output (3 or fewer queries):"""
+
+PROMPT_WITH_QA_TEMPLATE = """Here is the question you need to answer:
+
+\n --- \n {question} \n --- \n
+
+Here is any available background question + answer pairs:
+
+\n --- \n {q_a_pairs} \n --- \n
+
+Here is additional context relevant to the question: 
+
+\n --- \n {context} \n --- \n
+
+Use the above context and any background question + answer pairs to answer the question: \n {question}
+"""
 
 # Prepare the DB.
 embedding_function = get_embedding_function()
@@ -52,7 +73,6 @@ def query_rag(query_text: str):
 
 # Get unique union of documents
 def get_unique_union(documents: list[list]):
-    """ Unique union of retrieved docs """
     # Flatten list of lists, and convert each Document to string
     flattened_docs = [dumps(doc) for sublist in documents for doc in sublist]
     # Get unique documents
@@ -109,3 +129,43 @@ def retrieve_documents(query_list: list[str]):
     for query in query_list:
         results.append(db.similarity_search(query, k=6))
     return results
+
+def decompose_query(query_text):
+    prompt_decomposition = ChatPromptTemplate.from_template(QUERY_DECOMPOSITION_TEMPLATE)
+    # LLM
+    llm = Ollama(model="llama2", temperature="0")
+
+    # Chain
+    generate_queries_decomposition = ( prompt_decomposition | llm | StrOutputParser() | (lambda x: x.split("\n")))
+
+    # Run
+    questions = generate_queries_decomposition.invoke({"question":query_text})
+
+
+def format_qa_pair(question, answer):
+    formatted_string = ""
+    formatted_string += f"Question: {question}\nAnswer: {answer}\n\n"
+    return formatted_string.strip()
+
+def generate_qa_pairs(questions: list):
+    decomposition_prompt = ChatPromptTemplate.from_template(PROMPT_WITH_QA_TEMPLATE)
+    llm = Ollama(model="llama2", temperature="0")
+    q_a_pairs = ""
+
+    for q in questions:
+        rag_chain = (
+        {"context": itemgetter("question") | db.as_retriever, 
+        "question": itemgetter("question"),
+        "q_a_pairs": itemgetter("q_a_pairs")} 
+        | decomposition_prompt
+        | llm
+        | StrOutputParser())
+
+        # Run
+        answer = rag_chain.invoke({"question":q,"q_a_pairs":q_a_pairs})
+
+        # Format response
+        q_a_pair = format_qa_pair(q,answer)
+        q_a_pairs = q_a_pairs + "\n---\n"+  q_a_pair
+
+    return q_a_pairs

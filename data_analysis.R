@@ -8,6 +8,8 @@ use_python("anaconda3/bin/python")
 source_python(paste(dirname(rstudioapi::getSourceEditorContext()$path),"/data_generation.py",sep=""))
 source_python(paste(dirname(rstudioapi::getSourceEditorContext()$path),"/rag_pipeline.py",sep=""))
 
+llm <- define_llm(temperature = 1, top_k = 8, top_p = 0.5)
 
+themes <- generate_themes_list(llm, num_themes = 4)
 
-query_rag("Which resource cards are there in Catan?")
+generate_stories(llm, themes = themes, num_storeies_per_theme = 1)

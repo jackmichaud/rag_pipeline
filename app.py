@@ -16,7 +16,7 @@ def list_uploaded_files():
 
 ## STREAMLIT AND UI ##
 
-st.header("Retreival Augmented Generation (RAG) Demo", divider="orange")
+st.header("RAG Assistant", divider="orange")
 
 # Create a form
 with st.form(key='input_form'):
