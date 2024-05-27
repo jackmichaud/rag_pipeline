@@ -55,14 +55,23 @@ def query_rag(query_text: str):
     # Generate documents using multi-query
     context_text = generate_multi_query(query_text)
 
-    # Format chunks and prompt
+    # Generate sub-questions and generate qa pairs
+    sub_queries = decompose_query(query_text)
+    print(sub_queries)
+    qa_pairs = generate_qa_pairs(sub_queries)
+
+    # Format chunks
     delimiter = "\n\n---\n\n"
     context_stringified = delimiter.join([dumps(doc) for doc in context_text])
-    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt = prompt_template.format(context=context_stringified, question=query_text)
+    
+    # Format prompt
+    # prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)   # Comment out for query decomp
+    # prompt = prompt_template.format(context=context_stringified, question=query_text) # Comment out for query decomp
+    prompt_template = ChatPromptTemplate.from_template(PROMPT_WITH_QA_TEMPLATE)
+    prompt = prompt_template.format(context=context_stringified, question=query_text, q_a_pairs=qa_pairs)
 
     # Invoke the final llm call
-    model = Ollama(model="llama2", top_p="0.6")
+    model = Ollama(model="llama2", temperature="0")
     response_text = model.invoke(prompt)
 
     # Format the repsonse
@@ -127,12 +136,12 @@ def retrieve_documents(query_list: list[str]):
     # Search the DB for similar text.
     results = []
     for query in query_list:
-        results.append(db.similarity_search(query, k=6))
+        results.append(db.similarity_search(query, k=4))
     return results
 
+# Generate a list of sub-queries that break the problem into smaller problems
 def decompose_query(query_text):
     prompt_decomposition = ChatPromptTemplate.from_template(QUERY_DECOMPOSITION_TEMPLATE)
-    # LLM
     llm = Ollama(model="llama2", temperature="0")
 
     # Chain
@@ -141,7 +150,9 @@ def decompose_query(query_text):
     # Run
     questions = generate_queries_decomposition.invoke({"question":query_text})
 
+    return questions
 
+# Helper function used for formatting
 def format_qa_pair(question, answer):
     formatted_string = ""
     formatted_string += f"Question: {question}\nAnswer: {answer}\n\n"
@@ -150,11 +161,13 @@ def format_qa_pair(question, answer):
 def generate_qa_pairs(questions: list):
     decomposition_prompt = ChatPromptTemplate.from_template(PROMPT_WITH_QA_TEMPLATE)
     llm = Ollama(model="llama2", temperature="0")
-    q_a_pairs = ""
 
+    # Generate qa pairs
+    q_a_pairs = ""
     for q in questions:
+        # Chain
         rag_chain = (
-        {"context": itemgetter("question") | db.as_retriever, 
+        {"context": itemgetter("question") | db.as_retriever(), 
         "question": itemgetter("question"),
         "q_a_pairs": itemgetter("q_a_pairs")} 
         | decomposition_prompt
@@ -169,3 +182,4 @@ def generate_qa_pairs(questions: list):
         q_a_pairs = q_a_pairs + "\n---\n"+  q_a_pair
 
     return q_a_pairs
+
