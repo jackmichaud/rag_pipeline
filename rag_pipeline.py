@@ -27,10 +27,11 @@ to rephrase the question without changing its meaning, that is ok. Do not deviat
 each rephrased question by newlines. Do not respond with anything else except for the listof rephrased questions. 
 Include the original question at the top of the list. Original question: {question}"""
 
-QUERY_DECOMPOSITION_TEMPLATE = """You are a helpful assistant that generates multiple sub-questions related to an input question. \n
-The goal is to break down the input into a set of sub-problems / sub-questions that can be answered in isolation. \n
-Generate multiple search queries related to: {question} \n
-Output (3 or fewer queries):"""
+QUERY_DECOMPOSITION_TEMPLATE = """Assume you know nothing about a question. Your job is to gather information that would
+be relevant to answering the question. Generate a list of 3 or fewer queries whose answers will provide relevant 
+context that is necessary for answering the question. Asking for clarification on parts of the question or asking to define
+terms that may be complex is good. Respond with ONLY the list of queries; NO EXPLANATION.
+Here is the question: {question}"""
 
 PROMPT_WITH_QA_TEMPLATE = """Here is the question you need to answer:
 
@@ -47,17 +48,21 @@ Here is additional context relevant to the question:
 Use the above context and any background question + answer pairs to answer the question: \n {question}
 """
 
+HYDE_TEMPLATE = """Write 3 documents that each answer the following question: {question}. Separate each document with four newlines."""
+
 # Prepare the DB.
 embedding_function = get_embedding_function()
 db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function, collection_metadata={"hnsw:space": "cosine"})
+for i in range(8):
+    print(db.get("data/catan_rules.pdf:1:"+str(i))["documents"])
 
 def query_rag(query_text: str):
     # Generate documents using multi-query
-    context_text = generate_multi_query(query_text)
+    # context_text = generate_multi_query(query_text) get documents based on multi-query
+    context_text = generate_hyde_docs(query_text)
 
     # Generate sub-questions and generate qa pairs
     sub_queries = decompose_query(query_text)
-    print(sub_queries)
     qa_pairs = generate_qa_pairs(sub_queries)
 
     # Format chunks
@@ -69,6 +74,7 @@ def query_rag(query_text: str):
     # prompt = prompt_template.format(context=context_stringified, question=query_text) # Comment out for query decomp
     prompt_template = ChatPromptTemplate.from_template(PROMPT_WITH_QA_TEMPLATE)
     prompt = prompt_template.format(context=context_stringified, question=query_text, q_a_pairs=qa_pairs)
+    print(prompt)
 
     # Invoke the final llm call
     model = Ollama(model="llama2", temperature="0")
@@ -182,4 +188,20 @@ def generate_qa_pairs(questions: list):
         q_a_pairs = q_a_pairs + "\n---\n"+  q_a_pair
 
     return q_a_pairs
+
+# Map a query to a location in the document space. Should return more relevant docs
+def generate_hyde_docs(query_text: str):
+    hyde_prompt = ChatPromptTemplate.from_template(HYDE_TEMPLATE)
+    llm = Ollama(model="llama2", temperature="0")
+
+    hyde_chain = ( 
+    hyde_prompt
+    | llm
+    | (lambda x: x.split("\n\n\n\n")) 
+    | retrieve_documents
+    | reciprocal_rank_fusion
+    )
+
+    docs = hyde_chain.invoke({"question":query_text})
+    return docs
 
