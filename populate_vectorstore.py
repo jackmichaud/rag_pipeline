@@ -99,5 +99,5 @@ def update_vectorstore():
     add_to_chroma(chunks)
 
 if __name__ == "__main__":
-    # clear_database()
+    #clear_database()
     update_vectorstore()

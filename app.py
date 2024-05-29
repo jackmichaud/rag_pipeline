@@ -3,7 +3,7 @@ import streamlit as st
 import streamlit_authenticator as stauth
 
 import populate_vectorstore
-from rag_pipeline import query_rag
+from rag_pipeline import query_rag, final_rag_pipeline
 from populate_vectorstore import update_vectorstore
 
 def rag(prompt):
@@ -13,6 +13,16 @@ def rag(prompt):
 # Function to list uploaded files
 def list_uploaded_files():
     return [f for f in os.listdir("data") if f.endswith(".pdf")]
+
+def final_rag(prompt):
+    if(multi_query_on):
+        response = final_rag_pipeline(prompt, context_type='multi-query')
+    elif(hyde_on):
+        response = final_rag_pipeline(prompt, context_type='hyde')
+    else:
+        response = final_rag_pipeline(prompt)
+    return response
+    
 
 ## STREAMLIT AND UI ##
 
@@ -24,12 +34,18 @@ with st.form(key='input_form'):
     user_input = st.text_input("Enter some text:")
     # Create a submit button within the form
     submit_button = st.form_submit_button(label='Submit')
+    # Rag options 
+    multi_query_on = st.toggle("Multi-Query(RRF)")
+    recursive_decomp_on = st.toggle("Recursive-Decomp")
+    hyde_on = st.toggle("HyDE")
 
 # Check if the form is submitted
 if submit_button:
     if user_input:
         # Call the processing function
-        result = rag(user_input)
+        #result = rag(user_input)
+        result = final_rag(user_input)
+
         # Display the result
         st.write(result)
     else:
