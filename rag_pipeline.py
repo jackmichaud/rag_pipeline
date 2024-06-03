@@ -248,10 +248,12 @@ def final_rag_pipeline(query: str, **kwargs):
         qa_pairs = generate_qa_pairs(sub_queries)
 
         print("Formatting prompt...")
+        prompt_template += """\n\nUse the above context and any background question + answer pairs to answer the question: \n {question}"""
         final_prompt = ChatPromptTemplate.from_template(prompt_template)
         prompt_string = final_prompt.format(context=context_stringified, question=query, qa_pairs = qa_pairs)
     else:
         print("Formatting prompt...")
+        prompt_template += """\n\nUse the above context to answer the question: \n {question}"""
         final_prompt = ChatPromptTemplate.from_template(prompt_template)
         prompt_string = final_prompt.format(context=context_stringified, question=query)
 
