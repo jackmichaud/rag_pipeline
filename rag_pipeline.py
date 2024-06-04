@@ -48,8 +48,6 @@ Here is additional context relevant to the question:
 Use the above context and any background question + answer pairs to answer the question: \n {question}
 """
 
-HYDE_TEMPLATE = """Write 3 documents that each answer the following question: {question}. Separate each document with four newlines."""
-
 # Prepare the DB.
 embedding_function = get_embedding_function()
 db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function, collection_metadata={"hnsw:space": "cosine"})
@@ -189,23 +187,22 @@ def generate_qa_pairs(questions: list):
 
 # Map a query to a location in the document space. Should return more relevant docs
 def generate_hyde_docs(query_text: str):
-    hyde_prompt = ChatPromptTemplate.from_template(HYDE_TEMPLATE)
     llm = Ollama(model="llama2", temperature="0")
 
-    hyde_chain = ( 
-    hyde_prompt
-    | llm
-    | (lambda x: x.split("\n\n\n\n")) 
-    | retrieve_documents
-    | reciprocal_rank_fusion
-    )
+    hyde_template = """Write one short hypothetical document that answers the following question: {question}"""
+    hyde_prompt = ChatPromptTemplate.from_template(hyde_template)
+    prompt_string = hyde_prompt.format(question=query_text)
 
-    docs = hyde_chain.invoke({"question":query_text})
+    hyde_chain = ( llm | StrOutputParser() )
+    hypothetical_doc = hyde_chain.invoke(prompt_string)
+
+    docs = db.similarity_search(hypothetical_doc, k=6)
     return docs
 
 def final_rag_pipeline(query: str, **kwargs):
     context_type = kwargs.get('context_type', 'query')
     recursive_decomp = kwargs.get('recursive_decomp', False)
+    print_debug_info = kwargs.get('print_debug_info', False)
 
     prompt_template = """\nHere is the question you need to answer: {question}. 
     
@@ -216,22 +213,20 @@ def final_rag_pipeline(query: str, **kwargs):
     {context}
     """
 
-    print("Question: ", query)
-
+    # Gather context
     if(context_type == 'multi-query'):
         # Gather context from multi-query
-        print("Generating multiple perspectives...")
+        print("🔀 Generating multiple perspectives...")
         prompt = ChatPromptTemplate.from_template(MULTI_QUERY_TEMPLATE)
         context = generate_multi_query(prompt)
     elif(context_type == 'hyde'):
         # Gather context from hyde
-        print("Mapping prompt into document space...")
-        prompt = ChatPromptTemplate.from_template(HYDE_TEMPLATE)
-        context = generate_hyde_docs(prompt)
+        print("⏩ Mapping prompt into document space...")
+        context = generate_hyde_docs(query)
     elif(context_type == 'query'):
         # Gather context from hyde
-        print("Retrieving documents with similar embedding...")
-        context = retrieve_documents([query])
+        print("🗂 Retrieving documents with similar embedding...")
+        context = retrieve_documents([query])[0]
 
     # Format chunks
     delimiter = "\n\n---\n\n"
@@ -239,7 +234,7 @@ def final_rag_pipeline(query: str, **kwargs):
 
     # Add recursive decomp if wanted
     if(recursive_decomp == True):
-        print("Recursively solving question")
+        print("🔄 Recursively solving question")
         prompt_template += """\nAdditionally, here is any available background question + answer pairs. Use this to answer the question if needed:
 
         {qa_pairs}
@@ -247,28 +242,34 @@ def final_rag_pipeline(query: str, **kwargs):
         sub_queries = decompose_query(query)
         qa_pairs = generate_qa_pairs(sub_queries)
 
-        print("Formatting prompt...")
+        print("📝 Formatting prompt...")
         prompt_template += """\n\nUse the above context and any background question + answer pairs to answer the question: \n {question}"""
         final_prompt = ChatPromptTemplate.from_template(prompt_template)
         prompt_string = final_prompt.format(context=context_stringified, question=query, qa_pairs = qa_pairs)
     else:
-        print("Formatting prompt...")
+        print("📝 Formatting prompt...")
         prompt_template += """\n\nUse the above context to answer the question: \n {question}"""
         final_prompt = ChatPromptTemplate.from_template(prompt_template)
         prompt_string = final_prompt.format(context=context_stringified, question=query)
 
-    print("Prompt after query translation: " + prompt_string)
-
     # Invoke the final llm call
-    print("Invoking final llm call...")
+    print("📨 Invoking final llm call...")
     model = Ollama(model="llama2", temperature="0")
     response_text = model.invoke(prompt_string)
 
     # Format the repsonse
-    print("Formatting response...")
-    fomratted_sources = [doc[0].metadata.get("id", None)[5:] for doc in context]
-    formatted_response = f"Response: {response_text}\n\nSources: {fomratted_sources}"
-    print(formatted_response)
+    print("📝 Formatting response...")
+    formatted_sources = [doc.metadata.get("id", None)[5:] for doc in context]
+    formatted_response = f"Response: {response_text}\n\nSources: {formatted_sources}"
+    #print(formatted_response)
+    
+    if(print_debug_info == True):
+        print("Question: ", query)
+        print("Prompt: " + prompt_string)
+        print("Response: " + formatted_response)
+    
+    print("✅ Done!")
+
     return formatted_response
 
     
