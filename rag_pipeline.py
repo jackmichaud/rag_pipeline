@@ -30,7 +30,7 @@ Include the original question at the top of the list. Original question: {questi
 QUERY_DECOMPOSITION_TEMPLATE = """Assume you know nothing about a question. Your job is to gather information that would
 be relevant to answering the question. Generate a list of 3 or fewer queries whose answers will provide relevant 
 context that is necessary for answering the question. Asking for clarification on parts of the question or asking to define
-terms that may be complex is good. Respond with ONLY the list of queries; NO EXPLANATION.
+terms is good. Respond with ONLY the list of queries; NO EXPLANATION. Before the list, include four newlines.
 Here is the question: {question}"""
 
 PROMPT_WITH_QA_TEMPLATE = """Here is the question you need to answer:
@@ -132,6 +132,10 @@ def generate_multi_query(query_text: str):
     retrieval_chain = generate_queries | retrieve_documents | reciprocal_rank_fusion
 
     docs = retrieval_chain.invoke({"question":query_text})
+
+    # Delete the rank values
+    docs = [doc[0] for doc in docs]
+
     return docs
 
 def retrieve_documents(query_list: list[str]):
@@ -151,6 +155,10 @@ def decompose_query(query_text):
 
     # Run
     questions = generate_queries_decomposition.invoke({"question":query_text})
+
+    
+    # Get rid of elements after last occurance of '' in the list
+    questions = questions[:questions[::-1].index('')]
 
     return questions
 
@@ -196,6 +204,7 @@ def generate_hyde_docs(query_text: str):
     hyde_chain = ( llm | StrOutputParser() )
     hypothetical_doc = hyde_chain.invoke(prompt_string)
 
+    print("🗂 Retrieving documents with similar embedding...")
     docs = db.similarity_search(hypothetical_doc, k=6)
     return docs
 
@@ -217,8 +226,7 @@ def final_rag_pipeline(query: str, **kwargs):
     if(context_type == 'multi-query'):
         # Gather context from multi-query
         print("🔀 Generating multiple perspectives...")
-        prompt = ChatPromptTemplate.from_template(MULTI_QUERY_TEMPLATE)
-        context = generate_multi_query(prompt)
+        context = generate_multi_query(query)
     elif(context_type == 'hyde'):
         # Gather context from hyde
         print("⏩ Mapping prompt into document space...")
@@ -234,7 +242,7 @@ def final_rag_pipeline(query: str, **kwargs):
 
     # Add recursive decomp if wanted
     if(recursive_decomp == True):
-        print("🔄 Recursively solving question")
+        print("🔄 Recursively solving question...")
         prompt_template += """\nAdditionally, here is any available background question + answer pairs. Use this to answer the question if needed:
 
         {qa_pairs}

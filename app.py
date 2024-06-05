@@ -16,11 +16,11 @@ def list_uploaded_files():
 
 def final_rag(prompt):
     if(multi_query_on):
-        response = final_rag_pipeline(prompt, context_type='multi-query')
+        response = final_rag_pipeline(prompt, context_type='multi-query', recursive_decomp=recursive_decomp_on)
     elif(hyde_on):
-        response = final_rag_pipeline(prompt, context_type='hyde')
+        response = final_rag_pipeline(prompt, context_type='hyde', recursive_decomp=recursive_decomp_on)
     else:
-        response = final_rag_pipeline(prompt)
+        response = final_rag_pipeline(prompt, recursive_decomp=recursive_decomp_on)
     return response
     
 

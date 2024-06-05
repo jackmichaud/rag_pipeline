@@ -87,6 +87,11 @@ def calculate_chunk_ids(chunks):
         chunk.metadata["id"] = chunk_id
     return chunks
 
+def split_strings(strings):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800, chunk_overlap=80, length_function=len
+    )
+    return text_splitter.split_documents([Document(page_content=text) for text in strings])
 
 def clear_database():
     if os.path.exists(CHROMA_PATH):

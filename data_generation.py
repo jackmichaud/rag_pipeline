@@ -14,7 +14,7 @@ def define_llm(temperature: float, top_k: float, top_p: float):
 
 # Generate a list of themes given an llm object and a number of themes
 def generate_themes_list(llm, num_themes: int):
-    themes_prompt = ChatPromptTemplate.from_template("Return soleley {numberOfThemes} unique short story themes. Separate these themes by just a new line (do not number them or put a bullet)")
+    themes_prompt = ChatPromptTemplate.from_template("Return only {numberOfThemes} unique short story themes. Separate these themes by just a new line (do not number them or put a bullet)")
 
     # Generate themes chain
     themes_generation_chain = (
@@ -29,12 +29,15 @@ def generate_themes_list(llm, num_themes: int):
         if t == "":
             themes = themes[1:]
 
+    themes = themes[int(-1*num_themes):]
+
     #print("THEMES: \n" + themes)
+
     return themes
 
 # Generate stories given an llm and a list of themes
-def generate_stories(llm, themes: list, num_storeies_per_theme: int):
-    short_story_prompt = ChatPromptTemplate.from_template("Write {numberOfShortStories} short stories given the following theme: {theme}")
+def generate_stories(llm, themes: list):
+    short_story_prompt = ChatPromptTemplate.from_template("Write 1 short story given the following theme: {theme}")
 
     short_story_chain = (
         short_story_prompt
@@ -46,10 +49,11 @@ def generate_stories(llm, themes: list, num_storeies_per_theme: int):
 
     # Call the short story chain for each theme and add it to the list of stories
     for t in themes:
-        story = short_story_chain.invoke({"numberOfShortStories": num_storeies_per_theme, "theme": t})
+        story = short_story_chain.invoke({"theme": t})
         stories.append(story)
 
-    print(stories)
+    #print(stories)
+    return stories
 
 def load_stories(stories: list):
     #split the stories
