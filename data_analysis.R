@@ -25,4 +25,7 @@ for(story in stories) {
 average_accuracy = sum / (index - 1)
 average_accuracy
 
+print(cosine_similarity("The theme is to forgive", "Forgiveness"))
+
+
 

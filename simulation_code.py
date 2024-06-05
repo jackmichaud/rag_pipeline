@@ -5,6 +5,9 @@ from langchain_community.llms.ollama import Ollama
 from langchain_core.output_parsers import StrOutputParser
 from langchain.load import dumps, loads
 from operator import itemgetter
+from random_word import RandomWords
+import nltk 
+from nltk.corpus import wordnet 
 
 from get_embedding_function import get_embedding_function
 
@@ -33,3 +36,49 @@ def cosine_similarity(a, b):
     B = np.array(embedding_b)
     similarity = np.dot(A, B)/(norm(A)*norm(B))
     return similarity
+
+def semantic_similarity(a, b):
+    return wordnet.synsets(a)[0].wup_similarity(wordnet.synsets(b)[0])
+
+def generate_random_word():
+    r = RandomWords()
+    return r.get_random_word()
+
+def get_synonyms(word):
+    synonyms = []
+    for syn in wordnet.synsets(word): 
+        for l in syn.lemmas(): 
+            synonyms.append(l.name()) 
+    
+    return list(set(synonyms))
+
+
+def test_similarity_of_synonyms(word):
+    synonyms = get_synonyms(word)
+    if(len(synonyms) <= 3): 
+        return
+    sum = 0
+    for synonym in synonyms:
+        similarity = cosine_similarity(word, synonym)
+        #similarity = wordnet.synsets(word)[0].wup_similarity(wordnet.synsets(synonym)[0])
+        print(word, synonym, similarity)
+        sum += similarity
+    
+    print("Average similarity: ", sum/len(synonyms))
+    return sum/len(synonyms)
+
+def benchmark_embedding_similarity(num_simulations):
+    sum_similarity = 0
+    for i in range(num_simulations):
+        similarity = test_similarity_of_synonyms(generate_random_word())
+        while not isinstance(similarity, float):
+            similarity = test_similarity_of_synonyms(generate_random_word())
+        sum_similarity += similarity
+
+    print("Total average similarity: ", sum_similarity/num_simulations)
+    return sum_similarity/num_simulations
+
+
+
+if __name__ == "__main__":
+    benchmark_embedding_similarity(10)
