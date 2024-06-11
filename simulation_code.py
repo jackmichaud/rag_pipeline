@@ -40,6 +40,15 @@ def cosine_similarity(a, b):
 def semantic_similarity(a, b):
     return wordnet.synsets(a)[0].wup_similarity(wordnet.synsets(b)[0])
 
+def llm_similarity(a, b):
+    prompt_template = """Identify the similarity between the following phrases on a scale from 1-10: {a} and {b}. Simly output a number, nothing else"""
+    hyde_prompt = ChatPromptTemplate.from_template(prompt_template)
+    prompt_string = hyde_prompt.format(a=a, b=b)
+    llm = Ollama(model="llama2", temperature="0")
+    response = llm.invoke(prompt_string)
+
+    return response
+
 def generate_random_word():
     r = RandomWords()
     return r.get_random_word()
@@ -81,4 +90,4 @@ def benchmark_embedding_similarity(num_simulations):
 
 
 if __name__ == "__main__":
-    benchmark_embedding_similarity(10)
+    benchmark_embedding_similarity(100)
