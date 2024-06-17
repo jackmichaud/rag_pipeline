@@ -45,7 +45,7 @@ prompt = ChatPromptTemplate.from_messages(
         ("human", "{question}"),
     ]
 )
-llm = Ollama(model="llama2", temperature=1)
+llm = Ollama(model="llama3", temperature=1)
 
 response_generator = (prompt | llm | StrOutputParser()).with_config(
     run_name="GenerateResponse",
@@ -92,7 +92,7 @@ def answer_evaluator(run, example) -> dict:
     prediction = run.outputs["answer"]
 
     # LLM grader
-    llm = Ollama(model="llama2", temperature=0)
+    llm = Ollama(model="llama3", temperature=0)
 
     # Structured prompt
     answer_grader = grade_prompt_answer_accuracy | llm
@@ -122,5 +122,5 @@ experiment_results = evaluate(
     evaluators=[answer_evaluator],
     client=client,
     experiment_prefix="rag-answer-v-reference",
-    metadata={"version": "catan context, llama2"},
+    metadata={"version": "catan context, llama3"},
 )

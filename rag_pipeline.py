@@ -73,7 +73,7 @@ def query_rag(query_text: str):
     print(prompt)
 
     # Invoke the final llm call
-    model = Ollama(model="llama2", temperature="0")
+    model = Ollama(model="llama3", temperature="0")
     response_text = model.invoke(prompt)
 
     # Format the repsonse
@@ -123,7 +123,7 @@ def generate_multi_query(query_text: str):
     # Generate a list of rephrased questions
     generate_queries = (
         ChatPromptTemplate.from_template(MULTI_QUERY_TEMPLATE) 
-        | Ollama(model="llama2")
+        | Ollama(model="llama3")
         | StrOutputParser() 
         | (lambda x: x.split("\n"))
     )
@@ -148,7 +148,7 @@ def retrieve_documents(query_list: list[str]):
 # Generate a list of sub-queries that break the problem into smaller problems
 def decompose_query(query_text):
     prompt_decomposition = ChatPromptTemplate.from_template(QUERY_DECOMPOSITION_TEMPLATE)
-    llm = Ollama(model="llama2", temperature="0")
+    llm = Ollama(model="llama3", temperature="0")
 
     # Chain
     generate_queries_decomposition = ( prompt_decomposition | llm | StrOutputParser() | (lambda x: x.split("\n")))
@@ -170,7 +170,7 @@ def format_qa_pair(question, answer):
 
 def generate_qa_pairs(questions: list):
     decomposition_prompt = ChatPromptTemplate.from_template(PROMPT_WITH_QA_TEMPLATE)
-    llm = Ollama(model="llama2", temperature="0")
+    llm = Ollama(model="llama3", temperature="0")
 
     # Generate qa pairs
     q_a_pairs = ""
@@ -195,7 +195,7 @@ def generate_qa_pairs(questions: list):
 
 # Map a query to a location in the document space. Should return more relevant docs
 def generate_hyde_docs(query_text: str):
-    llm = Ollama(model="llama2", temperature="0")
+    llm = Ollama(model="llama3", temperature="0")
 
     hyde_template = """Write one short hypothetical document that answers the following question: {question}"""
     hyde_prompt = ChatPromptTemplate.from_template(hyde_template)
@@ -262,7 +262,7 @@ def final_rag_pipeline(query: str, **kwargs):
 
     # Invoke the final llm call
     print("📨 Invoking final llm call...")
-    model = Ollama(model="llama2", temperature="0")
+    model = Ollama(model="llama3", temperature="0")
     response_text = model.invoke(prompt_string)
 
     # Format the repsonse

@@ -44,7 +44,7 @@ def llm_similarity(a, b):
     prompt_template = """Identify the similarity between the following phrases on a scale from 1-10: {a} and {b}. Simly output a number, nothing else"""
     hyde_prompt = ChatPromptTemplate.from_template(prompt_template)
     prompt_string = hyde_prompt.format(a=a, b=b)
-    llm = Ollama(model="llama2", temperature="0")
+    llm = Ollama(model="llama3", temperature="0")
     response = llm.invoke(prompt_string)
 
     return response

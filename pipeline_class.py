@@ -29,7 +29,7 @@ class RagPipeline:
         Returns:
             None
         """
-        self.llm = Ollama(model="llama2", temperature=temperature, top_k=top_k, top_p=top_p)
+        self.llm = Ollama(model="llama3", temperature=temperature, top_k=top_k, top_p=top_p)
         self.embedding_model = OllamaEmbeddings(model="nomic-embed-text")
         self.vectorstore = Chroma(embedding_function=self.embedding_model)
         

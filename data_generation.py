@@ -9,7 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 # Wrapper function to define llm from R
 def define_llm(temperature: float, top_k: float, top_p: float):
-    llm = Ollama(model="llama2", temperature=temperature, top_k=top_k, top_p=top_p)
+    llm = Ollama(model="llama3", temperature=temperature, top_k=top_k, top_p=top_p)
     return llm
 
 # Generate a list of themes given an llm object and a number of themes
