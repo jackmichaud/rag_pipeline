@@ -1,6 +1,5 @@
 # rag_pipeline
 
-
 To launch the streamlit app, run the following command:
 
 ```
