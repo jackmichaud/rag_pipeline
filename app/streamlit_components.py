@@ -75,7 +75,6 @@ def file_uploader(post_upload_function: callable):
 
     if upload_button:
         if file is not None:
-            print(file)
             # Save the uploaded file to the specified directory
             file_path = os.path.join("app/data", collection, file.name)
             
@@ -93,7 +92,7 @@ def file_uploader(post_upload_function: callable):
     # Add a horizontal line below the collection selector
     st.sidebar.markdown("<hr>", unsafe_allow_html=True)
 
-def file_explorer():
+def file_explorer(delete_file: callable):
     st.sidebar.subheader("Uploaded Files")
     uploaded_files = list_uploaded_files()
     if uploaded_files:
@@ -101,8 +100,13 @@ def file_explorer():
             st.sidebar.text(collection)
             for file in uploaded_files[collection]:
                 file_path = os.path.join(f"data/{collection}/", file)
-                file_path = file_path.replace(" ", "&nbsp;")
-                st.sidebar.markdown(f"- [{file}]({file_path})", unsafe_allow_html=True)
+                file_path_md = file_path.replace(" ", "&nbsp;")
+
+                col1, col2 = st.sidebar.columns([1, 1])
+                with col1:
+                    st.markdown(f"- [{file}]({file_path_md})", unsafe_allow_html=True)
+                with col2:
+                    st.button("Delete", on_click=delete_file, args=[file_path], key=file_path)
     else:
         st.sidebar.write("No files uploaded yet.")
 
@@ -110,4 +114,4 @@ def list_uploaded_files():
     files = {}
     for collection in os.listdir("app/data"):
         files.update({collection: [f for f in os.listdir(f"app/data/{collection}") if f.endswith(".pdf")]})
-    return files
+    return files  

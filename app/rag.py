@@ -74,7 +74,6 @@ def update_vectorstore_collection(collection_name: str):
         print(f"👉 Adding new documents: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
         vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
-        print(new_chunks)
     else:
         print("✅ No new documents to add")
 
@@ -108,8 +107,6 @@ most relevant (top) to the least relevant (bottom):
                             str(doc.metadata["page"]) + ", Chunk ID: " + 
                             doc.metadata["id"] for doc in similar])
 
-    print(context)
-
     parser = StrOutputParser()
     model = Ollama(model="llama3", temperature="0")
 
@@ -120,3 +117,30 @@ most relevant (top) to the least relevant (bottom):
     return {"response": chain.stream({"question": question, "context": context, "expertise": collection_name}), "sources": sources}
 
         
+def delete_file(file_path):
+    print(f"Deleting file: {file_path}")
+
+    file_path = "app/" + file_path
+
+    # Remove local file
+    os.remove(file_path)
+
+    # Remove file from vectorstore
+    vectorstore = Chroma(
+        persist_directory="./app/chroma", 
+        embedding_function=get_embedding_function()
+    )
+    existing_items = vectorstore.get(where={"source": file_path})
+    ids = existing_items["ids"]
+    vectorstore.delete(ids=ids)
+
+    # Find the index of the last slash
+    last_slash_index = file_path.rfind('/')
+    # Slice the string up to the last slash
+    directory = file_path[:last_slash_index]
+
+    print(directory, len(directory))
+
+    # Check if directory is empty
+    if not os.listdir(directory) and len(directory) > 9:
+        os.rmdir(directory)

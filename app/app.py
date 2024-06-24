@@ -1,4 +1,4 @@
-from rag import stream_rag_pipeline, update_vectorstore_collection
+from rag import stream_rag_pipeline, update_vectorstore_collection, delete_file
 from streamlit_components import chatbot, file_uploader, file_explorer
 
 # Runnable streamlit app
@@ -8,4 +8,4 @@ chatbot(stream_rag_pipeline)
 
 file_uploader(update_vectorstore_collection)
 
-file_explorer()
+file_explorer(delete_file)
