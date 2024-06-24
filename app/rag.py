@@ -7,7 +7,7 @@ from langchain_community.llms.ollama import Ollama
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
-import asyncio
+import re
 
 def update_vectorstore_collection(collection_name: str):
     # Load documents in a given colleciton
@@ -46,10 +46,17 @@ def update_vectorstore_collection(collection_name: str):
         # Add it to the page meta-data.
         chunk.metadata["id"] = chunk_id
 
+        # Find the index of the last slash
+        last_slash_index = source.rfind('/')
+        # Slice the string up to the last slash
+        filter = source[:last_slash_index]
+
+        # Create metadata that will be used for filtering during retrieval
+        chunk.metadata["filter"] = filter
+
     vectorstore = Chroma(
         persist_directory="./app/chroma", 
-        embedding_function=get_embedding_function(),
-        collection_name=f"rag-{collection_name}-base",
+        embedding_function=get_embedding_function()
     )
 
     # Add or Update the documents.
@@ -67,6 +74,7 @@ def update_vectorstore_collection(collection_name: str):
         print(f"👉 Adding new documents: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
         vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
+        print(new_chunks)
     else:
         print("✅ No new documents to add")
 
@@ -81,14 +89,17 @@ words, and cite where you got the information from. The context chunks are ranke
 most relevant (top) to the least relevant (bottom):
 \n\n{context}
 \n\nAccording to the context, the answer to {question} is:""")
-        
+
     # Retrieve documents with similar embedding
     retriever = Chroma(
         persist_directory="./app/chroma", 
-        embedding_function=get_embedding_function(),
-        collection_name=f"rag-{collection_name}-base",
+        embedding_function=get_embedding_function()
     )
-    similar = retriever.similarity_search(question, k=6)
+    if(collection_name == "All Indexes"):
+        filter = None
+    else:
+        filter = dict(filter = "app/data/" + collection_name)
+    similar = retriever.similarity_search(question, k=6 , filter=filter)
 
     # Format chunks
     delimiter = "\n\n---\n\n"

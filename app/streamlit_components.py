@@ -56,7 +56,7 @@ def upload_selector():
 
 def file_uploader(post_upload_function: callable):
     # Create a text input widget for file upload
-    file = st.sidebar.file_uploader("Upload File To Vectorstore", accept_multiple_files=False, label_visibility="collapsed")
+    file = st.sidebar.file_uploader("Upload File To Vectorstore", accept_multiple_files=False)
 
     # Selector for collection
     collection = upload_selector()
@@ -75,14 +75,18 @@ def file_uploader(post_upload_function: callable):
 
     if upload_button:
         if file is not None:
+            print(file)
             # Save the uploaded file to the specified directory
-            file_path = os.path.join("data", collection, file.name)
+            file_path = os.path.join("app/data", collection, file.name)
+            
+            if not os.path.isdir(os.path.join("app/data", collection)):
+                os.makedirs(os.path.join("app/data", collection), exist_ok=True)
             
             # Write the uploaded file to the file path
             with open(file_path, "wb") as f:
                 f.write(file.getbuffer())
             
-            st.success(f"File '{file.name}' has been uploaded successfully!")
+            st.sidebar.success(f"File '{file.name}' has been uploaded successfully!")
         if post_upload_function is not None:
             post_upload_function(collection)
     
@@ -97,6 +101,7 @@ def file_explorer():
             st.sidebar.text(collection)
             for file in uploaded_files[collection]:
                 file_path = os.path.join(f"data/{collection}/", file)
+                file_path = file_path.replace(" ", "&nbsp;")
                 st.sidebar.markdown(f"- [{file}]({file_path})", unsafe_allow_html=True)
     else:
         st.sidebar.write("No files uploaded yet.")
