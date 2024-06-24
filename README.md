@@ -1,9 +1,25 @@
 # rag_pipeline
 
-To launch the streamlit app, run the following command:
+To set up the app, run the following commands:
 
-```
-streamlit run app.py
+```shell
+cat <<EOL > environment_variables.py
+import os
+
+os.environ['LANGCHAIN_TRACING_V2'] = 'true'
+os.environ['LANGCHAIN_ENDPOINT'] = 'https://api.smith.langchain.com'
+os.environ['LANGCHAIN_API_KEY'] = YOUR_API_KEY
+os.environ['OPENAI_API_KEY'] = YOUR_API_KEY
+
+# Silence warnings from HuggingFace
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+EOL
+```  
+
+Once the environment is set up, to launch the streamlit app, run the following command:
+
+```shell
+streamlit run app/app.py
 ```  
 
 Useful Sources:  
