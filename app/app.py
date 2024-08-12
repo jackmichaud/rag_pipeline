@@ -1,4 +1,5 @@
-from rag import stream_rag_pipeline, update_vectorstore_collection, delete_file
+from rag import stream_rag_pipeline
+from file_management import update_vectorstore_collection, delete_file
 from streamlit_components import chatbot, file_uploader, file_explorer
 
 # Runnable streamlit app

@@ -1,6 +1,8 @@
 import os
 import streamlit as st
 
+from file_management import list_uploaded_files
+
 def chatbot(chat_function: callable):
     col1, col2 = st.columns([4,2])
 
@@ -109,9 +111,3 @@ def file_explorer(delete_file: callable):
                     st.button("Delete", on_click=delete_file, args=[file_path], key=file_path)
     else:
         st.sidebar.write("No files uploaded yet.")
-
-def list_uploaded_files():
-    files = {}
-    for collection in os.listdir("app/data"):
-        files.update({collection: [f for f in os.listdir(f"app/data/{collection}") if f.endswith(".pdf")]})
-    return files  

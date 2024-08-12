@@ -2,7 +2,7 @@
 
 To set up the app, run the following commands:
 
-```shell
+```sh
 cat <<EOL > environment_variables.py
 import os
 
@@ -18,7 +18,7 @@ EOL
 
 Once the environment is set up, to launch the streamlit app, run the following command:
 
-```shell
+```sh
 streamlit run app/app.py
 ```  
 
