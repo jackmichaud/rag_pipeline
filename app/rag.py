@@ -1,11 +1,14 @@
-
 import environment_variables
 import os
+
+from langchain_core.pydantic_v1 import BaseModel, Field, conlist, ConstrainedList
+from typing import List
 
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from file_management import get_embedding_function
+from file_management import get_embedding_function, list_uploaded_files
+import json
 from langchain.load import dumps
 from langchain_groq import ChatGroq
 
@@ -49,4 +52,42 @@ context, the answer to {question} is:""")
 
 def stream_rag_with_routing(question: str, collection_name: str):
     # TODO Add routing
-    pass
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an assistant whose goal is to address a prompt by listing documents/resources that will help answer their question."),
+        ("ai", "Which documents can I choose from?"),
+        ("system", "Here are a list of all the documents you can choose from. If no documents are relevant to the question, just say \"I don't know\". Document list: \n{documents_list}"),
+        ("ai", "I'm ready to help. What is the user's question?"),
+        ("human", "Hello! This is my question: {question}"),
+        ("ai", "I will tell you the indexes of the relevant documents. They are: "),
+    ])
+
+    print("Your question is: ", question)
+    print("Your collection is: ", collection_name)
+
+    if(collection_name == "All Indexes"):
+        documents_list = json.dumps(list_uploaded_files(), indent = 4)
+    else:
+        documents_list = list_uploaded_files(collection_name)
+        stringified_documents_list = "\n".join([f"{i}. {doc}" for i, doc in enumerate(documents_list)]) + "\n"
+
+    llm = ChatGroq(model="mixtral-8x7b-32768", temperature=0)
+    structured_llm = llm.with_structured_output(IndexesOfDocuments)
+    parser = StrOutputParser()
+
+    chain = prompt | structured_llm 
+
+    indexes_of_relevant_documents = chain.invoke({"question": question, "documents_list": stringified_documents_list})
+
+    names_of_relevant_documents = [documents_list[index] for index in indexes_of_relevant_documents.indexes]
+
+    # Retrieve documents with similar embedding
+    retriever = Chroma(
+        persist_directory="./app/chroma", 
+        embedding_function=get_embedding_function()
+    )
+
+    retriever.similarity_search(question, k=6, filter=dict(filter = names_of_relevant_documents))
+
+class IndexesOfDocuments(BaseModel):
+    indexes: List[int]

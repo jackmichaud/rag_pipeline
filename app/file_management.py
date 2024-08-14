@@ -1,7 +1,6 @@
 import os
 
 from langchain_community.vectorstores import Chroma
-from file_management import get_embedding_function
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings.ollama import OllamaEmbeddings
@@ -17,7 +16,7 @@ def list_uploaded_files(collection_name = None):
     files = {}
     if collection_name is not None:
         files.update({collection_name: [f for f in os.listdir(f"app/data/{collection_name}") if f.endswith(".pdf")]})
-        return files
+        return files[collection_name]
     else:
         for collection in os.listdir("app/data"):
             files.update({collection: [f for f in os.listdir(f"app/data/{collection}") if f.endswith(".pdf")]})
@@ -69,11 +68,38 @@ def update_vectorstore_collection(collection_name: str):
     chunks = text_splitter.split_documents(docs)
     print("Documents split into " + str(len(chunks)) + " chunks")
 
+    generate_metadata(chunks)
+
+    vectorstore = Chroma(
+        persist_directory="./app/chroma", 
+        embedding_function=get_embedding_function()
+    )
+
+    # Add or Update the documents.
+    existing_items = vectorstore.get(include=[])  # IDs are always included by default
+    existing_ids = set(existing_items["ids"])
+    print(f"Number of existing documents in DB: {len(existing_ids)}")
+
+    # Only add documents that don't exist in the DB.
+    new_chunks = []
+    for chunk in chunks:
+        if chunk.metadata["id"] not in existing_ids:
+            new_chunks.append(chunk)
+    
+    if len(new_chunks):
+        print(f"👉 Adding new documents: {len(new_chunks)}")
+        new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
+        vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
+    else:
+        print("✅ No new documents to add")
+
+
+def generate_metadata(document_chunks):
     # Calculate chunk ids
     last_page_id = None
     current_chunk_index = 0
 
-    for chunk in chunks:
+    for chunk in document_chunks:
         source = chunk.metadata.get("source")
         page = chunk.metadata.get("page")
         current_page_id = f"{source}:{page}"
@@ -98,26 +124,3 @@ def update_vectorstore_collection(collection_name: str):
 
         # Create metadata that will be used for filtering during retrieval
         chunk.metadata["filter"] = filter
-
-    vectorstore = Chroma(
-        persist_directory="./app/chroma", 
-        embedding_function=get_embedding_function()
-    )
-
-    # Add or Update the documents.
-    existing_items = vectorstore.get(include=[])  # IDs are always included by default
-    existing_ids = set(existing_items["ids"])
-    print(f"Number of existing documents in DB: {len(existing_ids)}")
-
-    # Only add documents that don't exist in the DB.
-    new_chunks = []
-    for chunk in chunks:
-        if chunk.metadata["id"] not in existing_ids:
-            new_chunks.append(chunk)
-    
-    if len(new_chunks):
-        print(f"👉 Adding new documents: {len(new_chunks)}")
-        new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
-        vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
-    else:
-        print("✅ No new documents to add")
