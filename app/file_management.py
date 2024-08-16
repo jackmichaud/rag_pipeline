@@ -4,6 +4,9 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings.ollama import OllamaEmbeddings
+from langchain.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
+from langchain_core.output_parsers import StrOutputParser
 
 
 def get_embedding_function():
@@ -68,38 +71,11 @@ def update_vectorstore_collection(collection_name: str):
     chunks = text_splitter.split_documents(docs)
     print("Documents split into " + str(len(chunks)) + " chunks")
 
-    generate_metadata(chunks)
-
-    vectorstore = Chroma(
-        persist_directory="./app/chroma", 
-        embedding_function=get_embedding_function()
-    )
-
-    # Add or Update the documents.
-    existing_items = vectorstore.get(include=[])  # IDs are always included by default
-    existing_ids = set(existing_items["ids"])
-    print(f"Number of existing documents in DB: {len(existing_ids)}")
-
-    # Only add documents that don't exist in the DB.
-    new_chunks = []
-    for chunk in chunks:
-        if chunk.metadata["id"] not in existing_ids:
-            new_chunks.append(chunk)
-    
-    if len(new_chunks):
-        print(f"👉 Adding new documents: {len(new_chunks)}")
-        new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
-        vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
-    else:
-        print("✅ No new documents to add")
-
-
-def generate_metadata(document_chunks):
     # Calculate chunk ids
     last_page_id = None
     current_chunk_index = 0
 
-    for chunk in document_chunks:
+    for chunk in chunks:
         source = chunk.metadata.get("source")
         page = chunk.metadata.get("page")
         current_page_id = f"{source}:{page}"
@@ -124,3 +100,67 @@ def generate_metadata(document_chunks):
 
         # Create metadata that will be used for filtering during retrieval
         chunk.metadata["filter"] = filter
+
+    vectorstore = Chroma(
+        persist_directory="./app/chroma", 
+        embedding_function=get_embedding_function()
+    )
+
+    # Add or Update the documents.
+    existing_items = vectorstore.get(include=[])  # IDs are always included by default
+    existing_ids = set(existing_items["ids"])
+    print(f"Number of existing documents in DB: {len(existing_ids)}")
+
+    # Only add documents that don't exist in the DB.
+    new_chunks = []
+    summarys = ""
+    for chunk in chunks:
+        if chunk.metadata["id"] not in existing_ids:
+            # Add metadata to the document
+            chunk_summary = generate_metadata(chunk)
+            summarys += "Chunk " + chunk.metadata["id"] + " summary: " + chunk_summary + "\n\n"
+
+            new_chunks.append(chunk)
+
+    
+    for chunk in new_chunks:
+        chunk.metadata["document_summary"] = generate_document_summary(summarys)
+        
+    
+    if len(new_chunks):
+        print(f"👉 Adding new documents: {len(new_chunks)}")
+        new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
+        vectorstore.add_documents(new_chunks, ids=new_chunk_ids)
+    else:
+        print("✅ No new documents to add")
+
+
+def generate_metadata(chunk):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "Summarize the following document chunk in one or two sentences: {context}")
+    ])
+
+    model = ChatGroq(model="mixtral-8x7b-32768", temperature=0)
+
+    parser = StrOutputParser()
+
+    chain = prompt | model | parser
+
+    summary = chain.invoke({"context": chunk.page_content})
+
+    return summary
+
+def generate_document_summary(summary):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "Summarize the following document in up to four sentences: {context}")
+    ])
+
+    model = ChatGroq(model="mixtral-8x7b-32768", temperature=0)
+
+    parser = StrOutputParser()
+
+    chain = prompt | model | parser
+
+    summary = chain.invoke({"context": summary})
+
+    return summary
