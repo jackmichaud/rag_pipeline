@@ -48,11 +48,12 @@ def delete_file(file_path):
     # Slice the string up to the last slash
     directory = file_path[:last_slash_index]
 
-    print(directory, len(directory))
+    print("🗑️ Deleted " + len(existing_items) + " document chunks from vectorstore")
 
     # Check if directory is empty
     if not os.listdir(directory) and len(directory) > 9:
         os.rmdir(directory)
+        print("🗑️ Deleted " + directory)
 
 
 
@@ -112,20 +113,21 @@ def update_vectorstore_collection(collection_name: str):
     print(f"Number of existing documents in DB: {len(existing_ids)}")
 
     # Only add documents that don't exist in the DB.
+    print("🏷️ Generating metadata")
     new_chunks = []
-    summarys = ""
+    summaries = ""
     for chunk in chunks:
         if chunk.metadata["id"] not in existing_ids:
             # Add metadata to the document
             chunk_summary = generate_metadata(chunk)
-            summarys += "Chunk " + chunk.metadata["id"] + " summary: " + chunk_summary + "\n\n"
+            summaries += "Chunk " + chunk.metadata["id"] + " summary: " + chunk_summary + "\n\n"
 
             new_chunks.append(chunk)
 
-    
+    print("📝 Summarizing document")
+    document_summary = generate_document_summary(summaries)
     for chunk in new_chunks:
-        chunk.metadata["document_summary"] = generate_document_summary(summarys)
-        
+        chunk.metadata["document_summary"] = document_summary
     
     if len(new_chunks):
         print(f"👉 Adding new documents: {len(new_chunks)}")
