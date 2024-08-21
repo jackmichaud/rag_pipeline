@@ -40,7 +40,7 @@ def delete_file(file_path):
         embedding_function=get_embedding_function()
     )
     existing_items = vectorstore.get(where={"source": file_path})
-    ids = existing_items["ids"]
+    ids = list(existing_items.values())[0]
     vectorstore.delete(ids=ids)
 
     # Find the index of the last slash
@@ -48,10 +48,10 @@ def delete_file(file_path):
     # Slice the string up to the last slash
     directory = file_path[:last_slash_index]
 
-    print("🗑️ Deleted " + len(existing_items) + " document chunks from vectorstore")
+    print("🗑️ Deleted " + str(len(existing_items)) + " document chunks from vectorstore")
 
     # Check if directory is empty
-    if not os.listdir(directory) and len(directory) > 9:
+    if not os.listdir(directory) and len(directory) >= 9:
         os.rmdir(directory)
         print("🗑️ Deleted " + directory)
 
@@ -121,6 +121,7 @@ def update_vectorstore_collection(collection_name: str):
             # Add metadata to the document
             chunk_summary = generate_metadata(chunk)
             summaries += "Chunk " + chunk.metadata["id"] + " summary: " + chunk_summary + "\n\n"
+            chunk.metadata["summary"] = chunk_summary
 
             new_chunks.append(chunk)
 
